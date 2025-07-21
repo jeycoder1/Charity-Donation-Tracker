@@ -27,11 +27,11 @@
 
 ;; Events (using print for logging)
 (define-private (log-donation (donor principal) (amount uint))
-  (print { event: "donation", donor: donor, amount: amount, timestamp: block-height })
+  (print { event: "donation", donor: donor, amount: amount, timestamp: stacks-block-height })
 )
 
-(define-private (log-withdrawal (beneficiary principal) (amount uint))
-  (print { event: "withdrawal", beneficiary: beneficiary, amount: amount, timestamp: block-height })
+(define-private (log-withdrawal (recipient principal) (amount uint))
+  (print { event: "withdrawal", beneficiary: recipient, amount: amount, timestamp: stacks-block-height })
 )
 
 ;; Main donation function with enhanced features
@@ -43,7 +43,7 @@
     
     ;; Check if campaign deadline has passed (if set)
     (if (> (var-get campaign-deadline) u0)
-      (asserts! (<= block-height (var-get campaign-deadline)) ERR_UNAUTHORIZED)
+      (asserts! (<= stacks-block-height (var-get campaign-deadline)) ERR_UNAUTHORIZED)
       true
     )
     
@@ -64,7 +64,7 @@
       ;; Update donation record
       (map-set donations 
         { donor: tx-sender } 
-        { amount: (+ current-amount amount), timestamp: block-height })
+        { amount: (+ current-amount amount), timestamp: stacks-block-height })
       
       ;; Update total donations
       (var-set total-donations (+ (var-get total-donations) amount))
@@ -138,7 +138,7 @@
 (define-public (set-campaign-deadline (deadline uint))
   (begin
     (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
-    (asserts! (> deadline block-height) ERR_UNAUTHORIZED)
+    (asserts! (> deadline stacks-block-height) ERR_UNAUTHORIZED)
     (var-set campaign-deadline deadline)
     (ok true)
   )
@@ -211,7 +211,7 @@
   (and 
     (not (var-get contract-paused))
     (if (> (var-get campaign-deadline) u0)
-      (<= block-height (var-get campaign-deadline))
+      (<= stacks-block-height (var-get campaign-deadline))
       true
     )
   )
