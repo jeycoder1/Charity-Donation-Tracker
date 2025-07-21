@@ -152,3 +152,78 @@
     (ok true)
   )
 )
+
+;; Basic read-only functions
+(define-read-only (get-donation (donor principal))
+  (map-get? donations { donor: donor })
+)
+
+(define-read-only (get-total-donations)
+  (var-get total-donations)
+)
+
+(define-read-only (get-total-donors)
+  (var-get total-donors)
+)
+
+(define-read-only (get-contract-balance)
+  (stx-get-balance (as-contract tx-sender))
+)
+
+;; Contract state functions
+(define-read-only (is-contract-paused)
+  (var-get contract-paused)
+)
+
+(define-read-only (get-beneficiary)
+  (var-get beneficiary)
+)
+
+(define-read-only (is-withdrawal-enabled)
+  (var-get withdrawal-enabled)
+)
+
+(define-read-only (get-contract-owner)
+  CONTRACT_OWNER
+)
+
+(define-read-only (get-minimum-donation)
+  MINIMUM_DONATION
+)
+
+;; Campaign analytics functions
+(define-read-only (get-campaign-info)
+  {
+    goal: (var-get campaign-goal),
+    deadline: (var-get campaign-deadline),
+    total-raised: (var-get total-donations),
+    total-donors: (var-get total-donors),
+    goal-reached: (>= (var-get total-donations) (var-get campaign-goal))
+  }
+)
+
+(define-read-only (get-donor-by-index (index uint))
+  (map-get? donor-list { index: index })
+)
+
+;; Check if campaign is active
+(define-read-only (is-campaign-active)
+  (and 
+    (not (var-get contract-paused))
+    (if (> (var-get campaign-deadline) u0)
+      (<= block-height (var-get campaign-deadline))
+      true
+    )
+  )
+)
+
+;; Get campaign progress percentage (returns value out of 10000 for 2 decimal precision)
+(define-read-only (get-campaign-progress)
+  (let ((goal (var-get campaign-goal))
+        (raised (var-get total-donations)))
+    (if (> goal u0)
+      (/ (* raised u10000) goal)
+      u0
+    )
+  )
+)
