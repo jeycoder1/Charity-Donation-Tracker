@@ -76,3 +76,79 @@
     )
   )
 )
+
+;; Withdraw funds (owner only)
+(define-public (withdraw (amount uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (var-get withdrawal-enabled) ERR_WITHDRAWAL_FAILED)
+    (asserts! (<= amount (stx-get-balance (as-contract tx-sender))) ERR_INSUFFICIENT_AMOUNT)
+    
+    (let ((recipient (var-get beneficiary)))
+      (try! (as-contract (stx-transfer? amount tx-sender recipient)))
+      (log-withdrawal recipient amount)
+      (ok true)
+    )
+  )
+)
+
+;; Withdraw all funds
+(define-public (withdraw-all)
+  (let ((balance (stx-get-balance (as-contract tx-sender))))
+    (withdraw balance)
+  )
+)
+
+;; Emergency pause/unpause (owner only)
+(define-public (pause-contract)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (var-set contract-paused true)
+    (ok true)
+  )
+)
+
+(define-public (unpause-contract)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (var-set contract-paused false)
+    (ok true)
+  )
+)
+
+;; Set beneficiary (owner only)
+(define-public (set-beneficiary (new-beneficiary principal))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (not (is-eq new-beneficiary tx-sender)) ERR_INVALID_BENEFICIARY)
+    (var-set beneficiary new-beneficiary)
+    (ok true)
+  )
+)
+
+;; Set campaign parameters (owner only)
+(define-public (set-campaign-goal (goal uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (var-set campaign-goal goal)
+    (ok true)
+  )
+)
+
+(define-public (set-campaign-deadline (deadline uint))
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (asserts! (> deadline block-height) ERR_UNAUTHORIZED)
+    (var-set campaign-deadline deadline)
+    (ok true)
+  )
+)
+
+;; Toggle withdrawal capability (owner only)
+(define-public (toggle-withdrawals)
+  (begin
+    (asserts! (is-eq tx-sender CONTRACT_OWNER) ERR_UNAUTHORIZED)
+    (var-set withdrawal-enabled (not (var-get withdrawal-enabled)))
+    (ok true)
+  )
+)
