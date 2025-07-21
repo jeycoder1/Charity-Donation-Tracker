@@ -33,3 +33,46 @@
 (define-private (log-withdrawal (beneficiary principal) (amount uint))
   (print { event: "withdrawal", beneficiary: beneficiary, amount: amount, timestamp: block-height })
 )
+
+;; Main donation function with enhanced features
+(define-public (donate (amount uint))
+  (begin
+    (asserts! (not (var-get contract-paused)) ERR_CONTRACT_PAUSED)
+    (asserts! (>= amount MINIMUM_DONATION) ERR_MINIMUM_NOT_MET)
+    (asserts! (> amount u0) ERR_INSUFFICIENT_AMOUNT)
+    
+    ;; Check if campaign deadline has passed (if set)
+    (if (> (var-get campaign-deadline) u0)
+      (asserts! (<= block-height (var-get campaign-deadline)) ERR_UNAUTHORIZED)
+      true
+    )
+    
+    (try! (stx-transfer? amount tx-sender (as-contract tx-sender)))
+    
+    (let ((current-donation-data (map-get? donations { donor: tx-sender }))
+          (current-amount (default-to u0 (get amount current-donation-data))))
+      
+      ;; If this is a new donor, add to donor list
+      (if (is-none current-donation-data)
+        (let ((donor-index (var-get total-donors)))
+          (map-set donor-list { index: donor-index } { donor: tx-sender })
+          (var-set total-donors (+ (var-get total-donors) u1))
+        )
+        false
+      )
+      
+      ;; Update donation record
+      (map-set donations 
+        { donor: tx-sender } 
+        { amount: (+ current-amount amount), timestamp: block-height })
+      
+      ;; Update total donations
+      (var-set total-donations (+ (var-get total-donations) amount))
+      
+      ;; Log the donation
+      (log-donation tx-sender amount)
+      
+      (ok true)
+    )
+  )
+)
